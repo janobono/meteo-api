@@ -1,0 +1,18 @@
+version: '2.0'
+
+services:
+  meteo-db:
+    image: mariadb
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=app
+      - MYSQL_DATABASE=app
+      - MYSQL_USER=app
+      - MYSQL_PASSWORD=app
+    volumes:
+      - meteo-data:/var/lib/mysql
+
+volumes:
+  meteo-data:
