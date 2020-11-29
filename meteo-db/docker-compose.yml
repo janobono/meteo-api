@@ -2,7 +2,7 @@ version: '2.0'
 
 services:
   meteo-db:
-    image: mariadb
+    image: mariadb:10
     restart: always
     ports:
       - 3306:3306
