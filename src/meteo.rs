@@ -1,5 +1,4 @@
-use std::ops::Add;
-use std::str::FromStr;
+use std::str::{from_utf8, FromStr};
 
 use serde::Deserialize;
 
@@ -70,8 +69,8 @@ pub fn to_sql(query_input: &QueryInput) -> (Vec<Column>, String) {
 
     let columns = query_input.columns.split(',').map(|v| { Column::from_str(v).expect("Unsupported column name!") }).collect();
     let mut sql = String::from("SELECT datetime,");
-    sql = sql.add(query_input.columns.as_str());
-    sql = sql.add(format!(" FROM archive WHERE datetime >= {} AND datetime <= {}", query_input.timestamp_from, query_input.timestamp_to).as_str());
+    sql.push_str(query_input.columns.as_str());
+    sql.push_str(format!(" FROM archive WHERE datetime >= {} AND datetime <= {}", query_input.timestamp_from, query_input.timestamp_to).as_str());
 
     println!("columns = {:?}", columns);
     println!("sql = {}", sql);
@@ -92,10 +91,10 @@ pub fn to_json(query_result: &mut mysql::QueryResult<mysql::Text>) -> String {
         let mut index = 0;
         for row_column in row_columns.iter() {
             row_string.push('"');
-            row_string = row_string.add(row_column.name_str().as_ref());
+            row_string.push_str(row_column.name_str().as_ref());
             row_string.push('"');
             row_string.push(':');
-            row_string = row_string.add(value_to_json(&row_values[index]).as_str());
+            row_string.push_str(value_to_json(&row_values[index]).as_str());
             row_string.push(',');
             index += 1;
         }
@@ -103,7 +102,7 @@ pub fn to_json(query_result: &mut mysql::QueryResult<mysql::Text>) -> String {
         row_string.push('}');
         println!("row {} = {}", count, row_string);
 
-        result = result.add(row_string.as_str());
+        result.push_str(row_string.as_str());
         result.push(',');
         count += 1;
     }
@@ -119,13 +118,13 @@ fn value_to_json(value: &mysql::Value) -> String {
     match value {
         mysql::Value::NULL => String::from("null"),
         mysql::Value::Int(val) => format!("{}", val),
-        mysql::Value::Bytes(_) => {
-            let value_str = String::from(value.as_sql(true).as_str()).replace("'", "");
-            if value_str.contains(".") {
-                let f = value_str.parse::<f32>().unwrap();
-                format!("{:.2}", f)
+        mysql::Value::Bytes(val) => {
+            let result = String::from(from_utf8(val).unwrap());
+            if result.find(".") == None {
+                result
             } else {
-                value_str
+                let f = result.parse::<f32>().unwrap();
+                format!("{:.2}", f)
             }
         }
         _ => String::from("err"),
