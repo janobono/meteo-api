@@ -33,18 +33,11 @@ async fn main() -> std::io::Result<()> {
 }
 
 async fn meteo_data(query_input: web::Query<meteo::QueryInput>, data: web::Data<AppState>) -> impl Responder {
-    println!("{:?}", query_input);
-
-    let (columns, sql) = meteo::to_sql(&query_input);
-    println!("columns = {:?}", columns);
-    println!("sql = {}", sql);
-
+    let (_, sql) = meteo::to_sql(&query_input);
     let con = &mut data.pool.get_conn().expect("Database connection error!");
-    let result = meteo::to_json(&columns, &mut con.query_iter(sql).unwrap());
+    let result = meteo::to_json(&mut con.query_iter(sql).unwrap());
 
     HttpResponse::Ok()
         .content_type("application/json")
         .body(result.to_owned())
 }
-
-

@@ -21,6 +21,7 @@ pub struct QueryInput {
 
 #[derive(Debug, PartialEq)]
 pub enum Column {
+    Datetime,
     InTemp,
     OutTemp,
     Barometer,
@@ -35,7 +36,7 @@ pub enum Column {
     Dewpoint,
     Windchill,
     Heatindex,
-    U,
+    UV,
 }
 
 impl FromStr for Column {
@@ -43,6 +44,7 @@ impl FromStr for Column {
 
     fn from_str(input: &str) -> Result<Column, Self::Err> {
         match input {
+            "datetime" => Ok(Column::Datetime),
             "inTemp" => Ok(Column::InTemp),
             "outTemp" => Ok(Column::OutTemp),
             "barometer" => Ok(Column::Barometer),
@@ -57,67 +59,75 @@ impl FromStr for Column {
             "dewpoint" => Ok(Column::Dewpoint),
             "windchill" => Ok(Column::Windchill),
             "heatindex" => Ok(Column::Heatindex),
-            "U" => Ok(Column::U),
+            "UV" => Ok(Column::UV),
             _ => Err(()),
         }
     }
 }
 
-impl Column {
-    pub fn to_string(&self) -> String {
-        match self {
-            Column::InTemp => String::from("inTemp"),
-            Column::OutTemp => String::from("outTemp"),
-            Column::Barometer => String::from("barometer"),
-            Column::InHumidity => String::from("inHumidity"),
-            Column::OutHumidity => String::from("outHumidity"),
-            Column::WindSpeed => String::from("windSpeed"),
-            Column::WindDir => String::from("windDir"),
-            Column::WindGust => String::from("windGust"),
-            Column::WindGustDir => String::from("windGustDir"),
-            Column::RainRate => String::from("rainRate"),
-            Column::Rain => String::from("rain"),
-            Column::Dewpoint => String::from("dewpoint"),
-            Column::Windchill => String::from("windchill"),
-            Column::Heatindex => String::from("heatindex"),
-            Column::U => String::from("U"),
-        }
-    }
-}
-
 pub fn to_sql(query_input: &QueryInput) -> (Vec<Column>, String) {
-    let columns = query_input.columns.split(',').map(|v| { Column::from_str(v).expect("Unsupported column name!") }).collect();
+    println!("{:?}", query_input);
 
+    let columns = query_input.columns.split(',').map(|v| { Column::from_str(v).expect("Unsupported column name!") }).collect();
     let mut sql = String::from("SELECT datetime,");
     sql = sql.add(query_input.columns.as_str());
     sql = sql.add(format!(" FROM archive WHERE datetime >= {} AND datetime <= {}", query_input.timestamp_from, query_input.timestamp_to).as_str());
 
+    println!("columns = {:?}", columns);
+    println!("sql = {}", sql);
     (columns, sql)
 }
 
-pub fn to_json(columns: &Vec<Column>, rows: &mut mysql::QueryResult<mysql::Text>) -> String {
+pub fn to_json(query_result: &mut mysql::QueryResult<mysql::Text>) -> String {
     let mut result = String::from("[");
-
     let mut count = 0;
-    for row in rows {
-        result.push('{');
 
-        for column in columns {
-            result.push('"');
-            result = result.add(column.to_string().as_str());
-            result.push('"');
-            result.push(':');
-// TODO
-            result.push(',');
+    for query_row in query_result {
+        let mut row_string = String::from("{");
+
+        let row = query_row.unwrap();
+        let row_columns = row.columns();
+        let row_values = row.unwrap();
+
+        let mut index = 0;
+        for row_column in row_columns.iter() {
+            row_string.push('"');
+            row_string = row_string.add(row_column.name_str().as_ref());
+            row_string.push('"');
+            row_string.push(':');
+            row_string = row_string.add(value_to_json(&row_values[index]).as_str());
+            row_string.push(',');
+            index += 1;
         }
+        row_string.pop();
+        row_string.push('}');
+        println!("row {} = {}", count, row_string);
 
-        result.pop();
-        result.push('}');
+        result = result.add(row_string.as_str());
         result.push(',');
         count += 1;
     }
-    println!("rows count {}", count);
+
     result.pop();
     result.push(']');
+
+    println!("rows count {}", count);
     result
+}
+
+fn value_to_json(value: &mysql::Value) -> String {
+    match value {
+        mysql::Value::NULL => String::from("null"),
+        mysql::Value::Int(val) => format!("{}", val),
+        mysql::Value::Bytes(_) => {
+            let value_str = String::from(value.as_sql(true).as_str()).replace("'", "");
+            if value_str.contains(".") {
+                let f = value_str.parse::<f32>().unwrap();
+                format!("{:.2}", f)
+            } else {
+                value_str
+            }
+        }
+        _ => String::from("err"),
+    }
 }

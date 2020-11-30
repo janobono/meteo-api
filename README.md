@@ -43,10 +43,16 @@ cargo run
 
 - test
 ```
-curl -s -X GET 'http://localhost:8080/api/data?timestampFrom=1606374000&timestampTo=1606460400&columns=outTemp,dewpoint'
+curl -s -X GET 'http://localhost:8080/api/data?timestampFrom=1606374000&timestampTo=1606460400&columns=inTemp,outTemp,barometer,inHumidity,outHumidity,windSpeed,windDir,windGust,windGustDir,rainRate,rain,dewpoint,windchill,heatindex,UV'
 ```
 
 ## env
 |NAME|DEFAULT VALUE|
 |---|---|
 |METEO_API_PORT|8080|
+|METEO_API_DB_URL|mysql://app:app@localhost:3306/app|
+
+## system dependencies
+```
+sudo apt install libssl-dev
+```
