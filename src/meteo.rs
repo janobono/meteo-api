@@ -120,11 +120,11 @@ fn value_to_json(value: &mysql::Value) -> String {
         mysql::Value::Int(val) => format!("{}", val),
         mysql::Value::Bytes(val) => {
             let result = String::from(from_utf8(val).unwrap());
-            if result.find(".") == None {
+            let index = result.find(".");
+            if index == None || result.len() < index.unwrap() + 3 {
                 result
-            } else {
-                let f = result.parse::<f32>().unwrap();
-                format!("{:.2}", f)
+            }else{
+                 String::from(&result[..index.unwrap() + 3])
             }
         }
         _ => String::from("err"),
