@@ -54,5 +54,5 @@ curl -s -X GET 'http://localhost:8080/api/data?timestampFrom=1606374000&timestam
 
 ## system dependencies
 ```
-sudo apt install libssl-dev
+sudo apt install pkg-config libssl-dev
 ```
